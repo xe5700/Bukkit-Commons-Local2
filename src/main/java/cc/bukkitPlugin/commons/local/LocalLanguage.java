@@ -27,8 +27,10 @@ import cc.bukkitPlugin.commons.plugin.INeedClose;
 import cc.bukkitPlugin.commons.plugin.manager.AManager;
 import cc.bukkitPlugin.commons.plugin.manager.fileManager.ILangModel;
 import cc.commons.commentedyaml.CommentedYamlConfig;
-import cc.commons.util.ClassUtil;
 import cc.commons.util.StringUtil;
+import cc.commons.util.reflect.ClassUtil;
+import cc.commons.util.reflect.FieldUtil;
+import cc.commons.util.reflect.MethodUtil;
 
 public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implements INeedClose,ILangModel{
 
@@ -44,7 +46,6 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
     // Entity
     public static final Method method_NMSEntityInsentient_getCustomName;
     public static final Method method_NMSEntityInsentient_setCustomName;
-    public static final Method method_CraftEntity_getHandle;
     public static final Method method_NMSEntity_getName;
     public static final Method method_NMSEntity_writeToNBT;
     // LocalLang
@@ -64,19 +65,19 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
 
         // NMS ItemStck
         ItemStack tItem=new ItemStack(Material.STONE);
-        Object tNMSItem=ClassUtil.invokeMethod(NMSUtil.method_CraftItemStack_asNMSCopy,null,tItem);
+        Object tNMSItem=NMSUtil.getNMSItem(tItem);
         // NMS ItemStack getName
         Object tItemTag=NBTUtil.newNBTTagCompound();
         Object tDisplayTag=NBTUtil.newNBTTagCompound();
         String displayName="1234567890",tUnlocalName_Stone="tile.stone";
-        Object tNameTag=ClassUtil.getInstance(NBTUtil.clazz_NBTTagString,String.class,displayName);
+        Object tNameTag=ClassUtil.newInstance(NBTUtil.clazz_NBTTagString,String.class,displayName);
         NBTUtil.invokeNBTTagCompound_set(tDisplayTag,"Name",tNameTag);
         NBTUtil.invokeNBTTagCompound_set(tItemTag,"display",tDisplayTag);
         NBTUtil.setItemNBT_NMS(tNMSItem,tItemTag);
-        ArrayList<Method> tMayGetNameMethods=ClassUtil.getUnknowMethod(NMSUtil.clazz_NMSItemStack,String.class);
+        ArrayList<Method> tMayGetNameMethods=MethodUtil.getUnknowMethod(NMSUtil.clazz_NMSItemStack,String.class,true);
         int getNamePos=-1,getUnlocalNamePos=-1;
         for(int i=0;i<tMayGetNameMethods.size();i++){
-            String getStr=(String)ClassUtil.invokeMethod(tMayGetNameMethods.get(i),tNMSItem);
+            String getStr=(String)MethodUtil.invokeMethod(tMayGetNameMethods.get(i),tNMSItem);
             if(getStr.equals(displayName))
                 getNamePos=i;
             if(getStr.startsWith(tUnlocalName_Stone))
@@ -91,19 +92,21 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
             clazz_StringTranslate=ClassUtil.getClass("net.minecraft.util.StringTranslate");
 
             Class<?> cpwlang=ClassUtil.getClass("cpw.mods.fml.common.registry.LanguageRegistry");
-            Object instance_LanguageRegistry=ClassUtil.invokeMethod(cpwlang,(Object)null,"instance");
-            LocalLanguage.modLanguageData=(Map<String,Properties>)ClassUtil.getFieldValue(cpwlang,instance_LanguageRegistry,"modLanguageData");
+            Object instance_LanguageRegistry=FieldUtil.getField(cpwlang,"instance",true);
+            LocalLanguage.modLanguageData=(Map<String,Properties>)FieldUtil.getFieldValue(cpwlang,instance_LanguageRegistry,"modLanguageData",true);
         }else{
             clazz_StringTranslate=NMSUtil.getNMSClass("LocaleLanguage");
         }
-        instance_StringTranslate=ClassUtil.getFieldValue(clazz_StringTranslate,null,clazz_StringTranslate,-1).get(0);
-        fieldValue_StringTranslate_Map=ClassUtil.getFieldValue(instance_StringTranslate.getClass(),instance_StringTranslate,Map.class,-1).get(0);
+        Field tField=FieldUtil.getField(clazz_StringTranslate,clazz_StringTranslate,-1,true).get(0);
+        instance_StringTranslate=FieldUtil.getStaticFieldValue(tField);
+        tField=FieldUtil.getField(clazz_StringTranslate,Map.class,-1,true).get(0);
+        fieldValue_StringTranslate_Map=(Map<Object,Object>)FieldUtil.getFieldValue(tField,instance_StringTranslate);
 
         // enchant start
         tClazz=NMSUtil.getCBTClass("enchantments.CraftEnchantment");
-        field_CraftEnchantment_target=ClassUtil.getField(tClazz,"target");
+        field_CraftEnchantment_target=FieldUtil.getField(tClazz,"target",true);
         tClazz=field_CraftEnchantment_target.getType();
-        ArrayList<Method> tMethods=ClassUtil.getUnknowMethod(tClazz,String.class);
+        ArrayList<Method> tMethods=MethodUtil.getUnknowMethod(tClazz,String.class,true);
         int tPos=0;
         if(tMethods.size()>1){
             if(tMethods.get(tPos).getName().equals("toString"))
@@ -113,30 +116,27 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         // enchant stop
         // block start
         Class<?> clazz_CraftWorld=NMSUtil.getCBTClass("CraftWorld");
-        method_CraftWorld_getTileEntityAt=ClassUtil.getMethod(clazz_CraftWorld,"getTileEntityAt",new Class<?>[]{int.class,int.class,int.class});
+        method_CraftWorld_getTileEntityAt=MethodUtil.getMethod(clazz_CraftWorld,"getTileEntityAt",new Class<?>[]{int.class,int.class,int.class},true);
         // block end
         // entity start
-        tClazz=NMSUtil.getCBTClass("entity.CraftEntity");
-        method_CraftEntity_getHandle=ClassUtil.getMethod(tClazz,"getHandle");
-        Class<?> clazz_NMSEntity=method_CraftEntity_getHandle.getReturnType();
-        Class<?> clazz_NMSWorld=ClassUtil.getMethod(clazz_CraftWorld,"getHandle").getReturnType().getSuperclass();
+        Class<?> clazz_NMSWorld=MethodUtil.getMethod(clazz_CraftWorld,"getHandle",true).getReturnType().getSuperclass();
         Object tObjWorld=null;
         List<World> tWorlds=Bukkit.getWorlds();
         if(tWorlds!=null&&!tWorlds.isEmpty()){
             World tWorld=tWorlds.get(0);
-            tObjWorld=ClassUtil.invokeMethod(tWorld.getClass(),tWorld,"getHandle");
+            tObjWorld=MethodUtil.invokeMethod(tWorld.getClass(),tWorld,"getHandle",true);
         }
         tClazz=NMSUtil.getCBTClass("entity.CraftZombie");
-        Class<?> clazz_NMSEntityZombie=ClassUtil.getMethod(tClazz,"getHandle").getReturnType();
-        Object instance_NMSEntityZombie=ClassUtil.getInstance(clazz_NMSEntityZombie,clazz_NMSWorld,tObjWorld);
+        Class<?> clazz_NMSEntityZombie=MethodUtil.getMethod(tClazz,"getHandle",true).getReturnType();
+        Object instance_NMSEntityZombie=ClassUtil.newInstance(clazz_NMSEntityZombie,clazz_NMSWorld,tObjWorld);
 
         String key="entity.Zombie.name";
         String testLang="1234\n5678";
         String oldLang=fieldValue_StringTranslate_Map.put(key,testLang).toString();
-        tMethods=ClassUtil.getUnknowMethod(clazz_NMSEntity,String.class);
+        tMethods=MethodUtil.getUnknowMethod(NMSUtil.clazz_NMSEntity,String.class,true);
         tPos=0;
         for(int i=0;i<tMethods.size();i++){ // 获取getName方法
-            String tStr=(String)ClassUtil.invokeMethod(tMethods.get(i),instance_NMSEntityZombie);
+            String tStr=(String)MethodUtil.invokeMethod(tMethods.get(i),instance_NMSEntityZombie);
             if(tStr.equals(testLang)){
                 tPos=i;
                 fieldValue_StringTranslate_Map.put(key,oldLang);
@@ -145,31 +145,32 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         }
         method_NMSEntity_getName=tMethods.get(tPos);
         Class<?> clazz_NMSEntityInsentient=clazz_NMSEntityZombie.getSuperclass().getSuperclass().getSuperclass();
-        if(ClassUtil.isMethodExist(clazz_NMSEntityInsentient,null,void.class,String.class)){
+        if(MethodUtil.isMethodExist(clazz_NMSEntityInsentient,void.class,String.class,true)){
             //1.8及其以下
-            method_NMSEntityInsentient_setCustomName=ClassUtil.getUnknowMethod(clazz_NMSEntityInsentient,void.class,String.class).get(0);
-            tMethods=ClassUtil.getUnknowMethod(clazz_NMSEntityInsentient,String.class);
+            method_NMSEntityInsentient_setCustomName=MethodUtil.getUnknowMethod(clazz_NMSEntityInsentient,void.class,String.class,true).get(0);
+            tMethods=MethodUtil.getUnknowMethod(clazz_NMSEntityInsentient,String.class,true);
         }else{
             //1.9及其以上
-            method_NMSEntityInsentient_setCustomName=ClassUtil.getUnknowMethod(clazz_NMSEntity,void.class,String.class).get(0);
-            tMethods=ClassUtil.getUnknowMethod(clazz_NMSEntity,String.class);
+            method_NMSEntityInsentient_setCustomName=MethodUtil.getUnknowMethod(NMSUtil.clazz_NMSEntity,void.class,String.class,true).get(0);
+            tMethods=MethodUtil.getUnknowMethod(NMSUtil.clazz_NMSEntity,String.class,true);
         }
         tPos=0;
-        ClassUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,instance_NMSEntityZombie,"");
+        MethodUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,instance_NMSEntityZombie,"");
         for(Method sMethod : tMethods){
-            String tValue=String.valueOf(ClassUtil.invokeMethod(sMethod,instance_NMSEntityZombie));
+            String tValue=String.valueOf(MethodUtil.invokeMethod(sMethod,instance_NMSEntityZombie));
             if(tValue.isEmpty()){
                 break;
             }
             tPos++;
         }
         method_NMSEntityInsentient_getCustomName=tMethods.get(tPos);
-        tMethods=ClassUtil.getUnknowMethod(clazz_NMSEntityZombie,void.class,NBTUtil.clazz_NBTTagCompound);
+        tMethods=MethodUtil.getUnknowMethod(clazz_NMSEntityZombie,void.class,NBTUtil.clazz_NBTTagCompound,true);
         tPos=0;
-        ClassUtil.invokeMethod(tMethods.get(0),instance_NMSEntityZombie,tItemTag);
-        if(NBTUtil.getNBTTagCompoundValue(tItemTag).isEmpty())
+        MethodUtil.invokeMethod(tMethods.get(0),instance_NMSEntityZombie,tItemTag);
+        if(NBTUtil.getNBTTagCompoundValue(tItemTag).isEmpty()){
             tPos=1;
-        method_NMSEntity_writeToNBT=ClassUtil.getMethod(clazz_NMSEntity,tMethods.get(tPos).getName(),NBTUtil.clazz_NBTTagCompound);
+        }
+        method_NMSEntity_writeToNBT=MethodUtil.getMethod(NMSUtil.clazz_NMSEntity,tMethods.get(tPos).getName(),NBTUtil.clazz_NBTTagCompound,true);
         // entity stop
     }
 
@@ -309,7 +310,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         Object tNMSItem=NMSUtil.getNMSItem(tItem);
         if(tNMSItem==null)
             return LocalLanguage.getFormatId(tItem);
-        return (String)ClassUtil.invokeMethod(method_NMSItemStack_getName,tNMSItem);
+        return (String)MethodUtil.invokeMethod(method_NMSItemStack_getName,tNMSItem);
     }
 
     /**
@@ -331,7 +332,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         Object tNMSItem=NMSUtil.getNMSItem(pItem);
         if(tNMSItem==null)
             return LocalLanguage.getFormatId(pItem);
-        return (String)ClassUtil.invokeMethod(method_NMSItemStack_getName,tNMSItem);
+        return (String)MethodUtil.invokeMethod(method_NMSItemStack_getName,tNMSItem);
     }
 
     public String getName(Block pBlock){
@@ -344,7 +345,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         if(pBlock==null)
             return "";
 
-        if(pBlock.getWorld()!=null&&ClassUtil.invokeMethod(method_CraftWorld_getTileEntityAt,pBlock.getWorld(),new Object[]{pBlock.getX(),pBlock.getY(),pBlock.getZ()})!=null){
+        if(pBlock.getWorld()!=null&&MethodUtil.invokeMethod(method_CraftWorld_getTileEntityAt,pBlock.getWorld(),new Object[]{pBlock.getX(),pBlock.getY(),pBlock.getZ()})!=null){
             // TODO 需要根据TileEntity来写入物品NBT,然后生成对应的物品
         }
         return this.getName(pBlock.getType(),pBlock.getData());
@@ -411,19 +412,19 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
                 return "Player";
             else return tLang;
         }
-        Object tNMSEntity=ClassUtil.invokeMethod(method_CraftEntity_getHandle,pEntity);
+        Object tNMSEntity=NMSUtil.getNMSEntity(pEntity);
         if(tNMSEntity==null)
             return pEntity.getClass().getSimpleName().replace("Craft","").replace("Entity","");
         if(method_NMSEntityInsentient_getCustomName.getDeclaringClass().isInstance(tNMSEntity)){
-            String customeName=(String)ClassUtil.invokeMethod(method_NMSEntityInsentient_getCustomName,tNMSEntity);
+            String customeName=(String)MethodUtil.invokeMethod(method_NMSEntityInsentient_getCustomName,tNMSEntity);
             if(StringUtil.isNotEmpty(customeName)){
-                ClassUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,tNMSEntity,"");
-                String tName=(String)ClassUtil.invokeMethod(method_NMSEntity_getName,tNMSEntity);
-                ClassUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,tNMSEntity,customeName);
+                MethodUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,tNMSEntity,"");
+                String tName=(String)MethodUtil.invokeMethod(method_NMSEntity_getName,tNMSEntity);
+                MethodUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,tNMSEntity,customeName);
                 return tName;
             }
         }
-        return (String)ClassUtil.invokeMethod(method_NMSEntity_getName,tNMSEntity);
+        return (String)MethodUtil.invokeMethod(method_NMSEntity_getName,tNMSEntity);
     }
 
     /**
@@ -441,11 +442,11 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
             return ((Player)pEntity).getName();
         }
 
-        Object tNMSEntity=ClassUtil.invokeMethod(method_CraftEntity_getHandle,pEntity);
+        Object tNMSEntity=NMSUtil.getNMSEntity(pEntity);
         if(tNMSEntity==null)
             return pEntity.getClass().getSimpleName().replace("Craft","").replace("Entity","");
 
-        return (String)ClassUtil.invokeMethod(method_NMSEntity_getName,tNMSEntity);
+        return (String)MethodUtil.invokeMethod(method_NMSEntity_getName,tNMSEntity);
     }
 
     /**
@@ -464,7 +465,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         Object tNMSItem=NMSUtil.getNMSItem(pItem);
         if(tNMSItem==null)
             return "";
-        return (String)ClassUtil.invokeMethod(method_NMSItemStack_getUnlocalizedName,tNMSItem);
+        return (String)MethodUtil.invokeMethod(method_NMSItemStack_getUnlocalizedName,tNMSItem);
     }
 
     /**
@@ -481,10 +482,10 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         if(pEnchant==null)
             return "";
 
-        Object tNMSEnchant=ClassUtil.getFieldValue(pEnchant,field_CraftEnchantment_target);
+        Object tNMSEnchant=FieldUtil.getFieldValue(field_CraftEnchantment_target,pEnchant);
         if(tNMSEnchant==null)
             return "";
-        return String.valueOf(ClassUtil.invokeMethod(method_NMSEnchantment_getUnlocalizedName,tNMSEnchant));
+        return String.valueOf(MethodUtil.invokeMethod(method_NMSEnchantment_getUnlocalizedName,tNMSEnchant));
     }
 
     /**
