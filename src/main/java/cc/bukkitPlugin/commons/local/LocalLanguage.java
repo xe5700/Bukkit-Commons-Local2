@@ -93,7 +93,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
 
             Class<?> cpwlang=ClassUtil.getClass("cpw.mods.fml.common.registry.LanguageRegistry");
             Object instance_LanguageRegistry=FieldUtil.getField(cpwlang,"instance",true);
-            LocalLanguage.modLanguageData=(Map<String,Properties>)FieldUtil.getFieldValue(cpwlang,instance_LanguageRegistry,"modLanguageData",true);
+            LocalLanguage.modLanguageData=(Map<String,Properties>)FieldUtil.getFieldValue(cpwlang,"modLanguageData",true,instance_LanguageRegistry);
         }else{
             clazz_StringTranslate=NMSUtil.getNMSClass("LocaleLanguage");
         }
@@ -124,7 +124,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         List<World> tWorlds=Bukkit.getWorlds();
         if(tWorlds!=null&&!tWorlds.isEmpty()){
             World tWorld=tWorlds.get(0);
-            tObjWorld=MethodUtil.invokeMethod(tWorld.getClass(),tWorld,"getHandle",true);
+            tObjWorld=MethodUtil.invokeMethod(tWorld.getClass(),"getHandle",true,tWorld);
         }
         tClazz=NMSUtil.getCBTClass("entity.CraftZombie");
         Class<?> clazz_NMSEntityZombie=MethodUtil.getMethod(tClazz,"getHandle",true).getReturnType();
