@@ -4,11 +4,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -16,6 +16,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Zombie;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -119,16 +120,8 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         method_CraftWorld_getTileEntityAt=MethodUtil.getMethod(clazz_CraftWorld,"getTileEntityAt",new Class<?>[]{int.class,int.class,int.class},true);
         // block end
         // entity start
-        Class<?> clazz_NMSWorld=MethodUtil.getMethod(clazz_CraftWorld,"getHandle",true).getReturnType().getSuperclass();
-        Object tObjWorld=null;
-        List<World> tWorlds=Bukkit.getWorlds();
-        if(tWorlds!=null&&!tWorlds.isEmpty()){
-            World tWorld=tWorlds.get(0);
-            tObjWorld=MethodUtil.invokeMethod(tWorld.getClass(),"getHandle",true,tWorld);
-        }
-        tClazz=NMSUtil.getCBTClass("entity.CraftZombie");
-        Class<?> clazz_NMSEntityZombie=MethodUtil.getMethod(tClazz,"getHandle",true).getReturnType();
-        Object instance_NMSEntityZombie=ClassUtil.newInstance(clazz_NMSEntityZombie,clazz_NMSWorld,tObjWorld);
+        World tWorlds=Bukkit.getWorlds().iterator().next();
+        Object instance_NMSEntityZombie=NMSUtil.getNMSEntity(tWorlds.spawn(new Location(tWorlds,0,0,0),Zombie.class));
 
         String key="entity.Zombie.name";
         String testLang="1234\n5678";
@@ -139,12 +132,12 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
             String tStr=(String)MethodUtil.invokeMethod(tMethods.get(i),instance_NMSEntityZombie);
             if(tStr.equals(testLang)){
                 tPos=i;
-                fieldValue_StringTranslate_Map.put(key,oldLang);
                 break;
             }
         }
+        fieldValue_StringTranslate_Map.put(key,oldLang);
         method_NMSEntity_getName=tMethods.get(tPos);
-        Class<?> clazz_NMSEntityInsentient=clazz_NMSEntityZombie.getSuperclass().getSuperclass().getSuperclass();
+        Class<?> clazz_NMSEntityInsentient=instance_NMSEntityZombie.getClass().getSuperclass().getSuperclass().getSuperclass();
         if(MethodUtil.isMethodExist(clazz_NMSEntityInsentient,void.class,String.class,true)){
             //1.8及其以下
             method_NMSEntityInsentient_setCustomName=MethodUtil.getUnknowMethod(clazz_NMSEntityInsentient,void.class,String.class,true).get(0);
@@ -164,7 +157,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
             tPos++;
         }
         method_NMSEntityInsentient_getCustomName=tMethods.get(tPos);
-        tMethods=MethodUtil.getUnknowMethod(clazz_NMSEntityZombie,void.class,NBTUtil.clazz_NBTTagCompound,true);
+        tMethods=MethodUtil.getUnknowMethod(instance_NMSEntityZombie.getClass(),void.class,NBTUtil.clazz_NBTTagCompound,true);
         tPos=0;
         MethodUtil.invokeMethod(tMethods.get(0),instance_NMSEntityZombie,tItemTag);
         if(NBTUtil.getNBTTagCompoundValue(tItemTag).isEmpty()){
