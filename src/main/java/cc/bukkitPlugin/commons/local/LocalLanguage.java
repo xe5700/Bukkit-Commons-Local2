@@ -93,7 +93,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
             clazz_StringTranslate=ClassUtil.getClass("net.minecraft.util.StringTranslate");
 
             Class<?> cpwlang=ClassUtil.getClass("cpw.mods.fml.common.registry.LanguageRegistry");
-            Object instance_LanguageRegistry=FieldUtil.getField(cpwlang,"instance",true);
+            Object instance_LanguageRegistry=MethodUtil.invokeStaticMethod(cpwlang,"instance",true);
             LocalLanguage.modLanguageData=(Map<String,Properties>)FieldUtil.getFieldValue(cpwlang,"modLanguageData",true,instance_LanguageRegistry);
         }else{
             clazz_StringTranslate=NMSUtil.getNMSClass("LocaleLanguage");
