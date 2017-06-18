@@ -22,6 +22,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import cc.bukkitPlugin.commons.Log;
 import cc.bukkitPlugin.commons.nmsutil.NMSUtil;
+import cc.bukkitPlugin.commons.nmsutil.nbt.NBTKey;
 import cc.bukkitPlugin.commons.nmsutil.nbt.NBTUtil;
 import cc.bukkitPlugin.commons.plugin.ABukkitPlugin;
 import cc.bukkitPlugin.commons.plugin.INeedClose;
@@ -290,19 +291,20 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
      *            物品
      */
     public String getName(ItemStack pItem){
-        if(pItem==null)
+        if(pItem==null||pItem.getType()==Material.AIR)
             return "";
-        // 去掉自定义的名字
-        ItemStack tItem=pItem.clone();
-        ItemMeta tMeta=tItem.getItemMeta();
-        if(tMeta!=null&&tMeta.hasDisplayName()){
-            tMeta.setDisplayName(null);
-            tItem.setItemMeta(tMeta);
-        }
 
+        ItemStack tItem=pItem.clone();
         Object tNMSItem=NMSUtil.getNMSItem(tItem);
-        if(tNMSItem==null)
+        if(tNMSItem==null){
             return LocalLanguage.getFormatId(tItem);
+        }
+        // 去掉自定义的名字
+        Object tNBT=NBTUtil.getItemNBT_NMS(tNMSItem);
+        Object tTagDisplay=NBTUtil.invokeNBTTagCompound_remove(tNBT,NBTKey.ItemDisplay);
+        if(tTagDisplay!=null){
+            NBTUtil.invokeNBTTagCompound_remove(tTagDisplay,NBTKey.ItemName);
+        }
         return (String)MethodUtil.invokeMethod(method_NMSItemStack_getName,tNMSItem);
     }
 
