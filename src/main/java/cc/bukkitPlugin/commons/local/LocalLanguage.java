@@ -321,8 +321,8 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         if(pItem==null)
             return "";
         ItemMeta tMeta;
-        if((tMeta=pItem.getItemMeta())!=null&&tMeta.hasDisplayName())
-            return pItem.getItemMeta().getDisplayName();
+        if(pItem.hasItemMeta()&&(tMeta=pItem.getItemMeta()).hasDisplayName())
+            return tMeta.getDisplayName();
 
         Object tNMSItem=NMSUtil.getNMSItem(pItem);
         if(tNMSItem==null)
