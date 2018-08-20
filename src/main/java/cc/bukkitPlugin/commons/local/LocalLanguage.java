@@ -138,16 +138,16 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         Object instance_NMSEntityZombie=NMSUtil.getNMSEntity(tWorlds.spawn(new Location(tWorlds,0,0,0),Zombie.class));
 
         String[] tKeys=new String[]{"entity.Zombie.name","entity.minecraft.zombie"};
-        String testLang="1234\n5678",tKey=null,oldLang=null;
+        String tKey=null,oldLang=null;
         for(String sKey : tKeys){
-            Object tOld=fieldValue_StringTranslate_Map.put(sKey,testLang);
+            Object tOld=fieldValue_StringTranslate_Map.put(sKey,tTestLang);
             if(tOld!=null){
                 tKey=sKey;
                 oldLang=String.valueOf(tOld);
                 break;
             }else fieldValue_StringTranslate_Map.remove(sKey);
         }
-        method_NMSEntity_getName=findGetNameMethod(NMSUtil.clazz_NMSEntity,instance_NMSEntityZombie,testLang);
+        method_NMSEntity_getName=findGetNameMethod(NMSUtil.clazz_NMSEntity,instance_NMSEntityZombie,tTestLang);
         fieldValue_StringTranslate_Map.put(tKey,oldLang);
         if(method_NMSEntity_getName==null) Log.debug("语言API无法获取Entity的getName方法,可能会存在兼容性问题");
         // EntityInsentient.setCustomName
@@ -161,7 +161,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         }else{
             tPos=-1;
             for(int i=tMethods.size()-1;i>=0;i--){
-                if(MethodUtil.isMethodExist(NMSUtil.clazz_EntityPlayerMP,tMethods.get(i),true)){
+                if(!MethodUtil.isMethodExist(NMSUtil.clazz_EntityPlayerMP,tMethods.get(i),true)){
                     tPos=i;
                     break;
                 }
@@ -174,10 +174,12 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         if(method_NMSEntityInsentient_setCustomName!=null){
             tMethods=MethodUtil.getDeclaredMethod(tTargetClazz,MethodFilter.rt(tParam).noParam());
             tPos=-1;
-            MethodUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,instance_NMSEntityZombie,createTextOrCompound(tTestLang));
+            Object tTextOrCompound=createTextOrCompound(tTestLang);
+            MethodUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,instance_NMSEntityZombie,tTextOrCompound);
             for(int i=tMethods.size()-1;i>=0;i--){
-                String tValue=getTextFromStringOrTextCompound(MethodUtil.invokeMethod(tMethods.get(i),instance_NMSEntityZombie));
-                if(tTestLang.equals(tValue)){
+                Object tRetVal=MethodUtil.invokeMethod(tMethods.get(i),instance_NMSEntityZombie);
+                String tValue=getTextFromStringOrTextCompound(tRetVal);
+                if(tTestLang.equals(tValue)&&(!NAME_USE_IChat||tRetVal==tTextOrCompound)){
                     tPos=i;
                     break;
                 }
