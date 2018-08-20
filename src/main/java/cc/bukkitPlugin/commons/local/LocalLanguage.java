@@ -34,6 +34,7 @@ import cc.bukkitPlugin.commons.plugin.manager.fileManager.ILangModel;
 import cc.bukkitPlugin.commons.util.BukkitUtil;
 import cc.commons.commentedyaml.CommentedYamlConfig;
 import cc.commons.util.StringUtil;
+import cc.commons.util.extra.CList;
 import cc.commons.util.reflect.ClassUtil;
 import cc.commons.util.reflect.FieldUtil;
 import cc.commons.util.reflect.MethodUtil;
@@ -65,9 +66,9 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
     private static Map<String,Properties> modLanguageData;
     // IChatCompound
     private static boolean NAME_USE_IChat=true;
-    private static Class clazz_IChatCompound=null;
-    private static Class clazz_ChatCompoundText=null;
-    private static Method method_IChatCompound_getText=null;
+    private static Class clazz_IChatComponent=null;
+    private static Class clazz_ChatComponentText=null;
+    private static Method method_IChatCompoent_getText=null;
 
     private static Properties en_USProp=null;
     public final static String en_US="en_US";
@@ -83,12 +84,13 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         // NMS ItemStack getName
         // getName
         method_NMSItemStack_getName=findGetNameMethod(NMSUtil.clazz_NMSItemStack,tNMSItem,tTestLang);
-        if(method_NMSItemStack_getName==null) Log.warn("语言API无法获取ItemStank的getName方法,可能会存在兼容性问题");
+        if(method_NMSItemStack_getName==null)
+            Log.warn("语言API无法获取ItemStank的getName方法,可能会存在兼容性问题");
         else NAME_USE_IChat=method_NMSItemStack_getName.getReturnType()!=String.class;
         // getUnlocalizedName
         List<String> tUnlocalName_Stone=Arrays.asList("tile.stone","block.minecraft.stone");
         int tPos=-1;
-        ArrayList<Method> tMethods=MethodUtil.getDeclaredMethod(NMSUtil.clazz_NMSItemStack,MethodFilter.rt(String.class));
+        CList<Method> tMethods=MethodUtil.getDeclaredMethod(NMSUtil.clazz_NMSItemStack,MethodFilter.rt(String.class).noParam());
         for(int i=tMethods.size()-1;i>=0;i--){
             String getStr=(String)MethodUtil.invokeMethod(tMethods.get(i),tNMSItem);
             if(StringUtil.existPrefix(tUnlocalName_Stone,getStr)){
@@ -119,7 +121,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         tClazz=NMSUtil.getCBTClass("enchantments.CraftEnchantment");
         field_CraftEnchantment_target=FieldUtil.getDeclaredField(tClazz,"target");
         tClazz=field_CraftEnchantment_target.getType();
-        tMethods=MethodUtil.getDeclaredMethod(tClazz,MethodFilter.rt(String.class));
+        tMethods=MethodUtil.getDeclaredMethod(tClazz,MethodFilter.rt(String.class).noParam());
         tPos=0;
         if(tMethods.size()>1){
             if(tMethods.get(tPos).getName().equals("toString"))
@@ -148,26 +150,42 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         method_NMSEntity_getName=findGetNameMethod(NMSUtil.clazz_NMSEntity,instance_NMSEntityZombie,testLang);
         fieldValue_StringTranslate_Map.put(tKey,oldLang);
         if(method_NMSEntity_getName==null) Log.debug("语言API无法获取Entity的getName方法,可能会存在兼容性问题");
-
+        // EntityInsentient.setCustomName
         Class<?> clazz_NMSEntityInsentient=instance_NMSEntityZombie.getClass().getSuperclass().getSuperclass().getSuperclass();
         Class<?> tTargetClazz=MethodUtil.isDeclaredMethodExist(clazz_NMSEntityInsentient,MethodFilter.rpt(void.class,String.class))
                 ?clazz_NMSEntityInsentient:NMSUtil.clazz_NMSEntity;
-        Class<?> tParam=(clazz_IChatCompound==null||!NAME_USE_IChat)?String.class:clazz_IChatCompound;
-        method_NMSEntityInsentient_setCustomName=MethodUtil.getDeclaredMethod(tTargetClazz,MethodFilter.rpt(void.class,tParam)
-                .addDeniedModifer(Modifier.STATIC)).last();
-        tMethods=MethodUtil.getDeclaredMethod(tTargetClazz,MethodFilter.rt(tParam).noParam());
-
-        tPos=-1;
-        MethodUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,instance_NMSEntityZombie,createTextOrCompound(tTestLang));
-        for(int i=tMethods.size()-1;i>=0;i--){
-            String tValue=getTextFromStringOrTextCompound(MethodUtil.invokeMethod(tMethods.get(i),instance_NMSEntityZombie));
-            if(tTestLang.equals(tValue)){
-                tPos=i;
-                break;
+        Class<?> tParam=(clazz_IChatComponent==null||!NAME_USE_IChat)?String.class:clazz_IChatComponent;
+        tMethods=MethodUtil.getDeclaredMethod(tTargetClazz,MethodFilter.rpt(void.class,tParam).addDeniedModifer(Modifier.STATIC));
+        if(tMethods.onlyOne()){
+            method_NMSEntityInsentient_setCustomName=tMethods.oneGet();
+        }else{
+            tPos=-1;
+            for(int i=tMethods.size()-1;i>=0;i--){
+                if(MethodUtil.isMethodExist(NMSUtil.clazz_EntityPlayerMP,tMethods.get(i),true)){
+                    tPos=i;
+                    break;
+                }
             }
+
+            method_NMSEntityInsentient_setCustomName=tPos==-1?null:tMethods.get(tPos);
+            if(tPos==-1) Log.debug("语言API无法获取Entity的setCustomName方法,可能会存在兼容性问题");
         }
-        method_NMSEntityInsentient_getCustomName=tPos==-1?null:tMethods.get(tPos);
-        if(tPos==-1) Log.debug("语言API无法获取Entity的getCustomName方法,可能会存在兼容性问题");
+        // EntityInsentient.getCustomName
+        if(method_NMSEntityInsentient_setCustomName!=null){
+            tMethods=MethodUtil.getDeclaredMethod(tTargetClazz,MethodFilter.rt(tParam).noParam());
+            tPos=-1;
+            MethodUtil.invokeMethod(method_NMSEntityInsentient_setCustomName,instance_NMSEntityZombie,createTextOrCompound(tTestLang));
+            for(int i=tMethods.size()-1;i>=0;i--){
+                String tValue=getTextFromStringOrTextCompound(MethodUtil.invokeMethod(tMethods.get(i),instance_NMSEntityZombie));
+                if(tTestLang.equals(tValue)){
+                    tPos=i;
+                    break;
+                }
+            }
+            method_NMSEntityInsentient_getCustomName=tPos==-1?null:tMethods.get(tPos);
+            
+        }else method_NMSEntityInsentient_getCustomName=null;
+        if(method_NMSEntityInsentient_getCustomName==null) Log.debug("语言API无法获取Entity的getCustomName方法,可能会存在兼容性问题");
         tMethods=MethodUtil.getDeclaredMethod(instance_NMSEntityZombie.getClass(),MethodFilter.rpt(void.class,NBTUtil.clazz_NBTTagCompound));
         tPos=0;
         Object tNBT=NBTUtil.newNBTTagCompound();
@@ -181,7 +199,7 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
 
     public static Method findGetNameMethod(Class<?> pTarget,Object pInstance,String pDisplayName){
         MethodFilter tFilter=MethodFilter.c().noParam().denyReturnType(void.class,boolean.class);
-        if(clazz_IChatCompound!=null) tFilter.setReturnType(clazz_IChatCompound);
+        if(clazz_IChatComponent!=null) tFilter.setReturnType(clazz_IChatComponent);
         ArrayList<Method> tMethods=MethodUtil.getMethod(pTarget,tFilter,true);
         for(int i=tMethods.size()-1;i>=0;i--){
             Method tMethod=tMethods.get(i);
@@ -196,16 +214,16 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
                 if((tMethod.getReturnType()==String.class&&tRetValStr.equals(pDisplayName))){
                     return tMethod;
                 }else if(NAME_USE_IChat&&tMethod.getReturnType().getSimpleName().startsWith("IChat")){
-                    if(clazz_IChatCompound==null){
+                    if(clazz_IChatComponent==null){
                         for(Method sMethod : MethodUtil.getDeclaredMethod(tMethod.getReturnType(),MethodFilter.rt(String.class).noParam())){
                             if(pDisplayName.equals(MethodUtil.invokeMethod(sMethod,tRetVal))){
-                                method_IChatCompound_getText=sMethod;
-                                clazz_IChatCompound=tMethod.getReturnType();
-                                clazz_ChatCompoundText=tRetVal.getClass();
+                                method_IChatCompoent_getText=sMethod;
+                                clazz_IChatComponent=tMethod.getReturnType();
+                                clazz_ChatComponentText=tRetVal.getClass();
                                 return tMethod;
                             }
                         }
-                    }else if(pDisplayName.equals(MethodUtil.invokeMethod(method_IChatCompound_getText,tRetVal))){
+                    }else if(pDisplayName.equals(MethodUtil.invokeMethod(method_IChatCompoent_getText,tRetVal))){
                         return tMethod;
                     }
 
@@ -219,15 +237,15 @@ public class LocalLanguage<T extends ABukkitPlugin<T>>extends AManager<T> implem
         if(pRetVal==null) return null;
         if(pRetVal instanceof String
                 ||!NAME_USE_IChat
-                ||method_IChatCompound_getText==null
-                ||!method_IChatCompound_getText.getDeclaringClass().isAssignableFrom(pRetVal.getClass()))
+                ||method_IChatCompoent_getText==null
+                ||!method_IChatCompoent_getText.getDeclaringClass().isAssignableFrom(pRetVal.getClass()))
             return pRetVal.toString();
 
-        return (String)MethodUtil.invokeMethod(method_IChatCompound_getText,pRetVal);
+        return (String)MethodUtil.invokeMethod(method_IChatCompoent_getText,pRetVal);
     }
 
     public static Object createTextOrCompound(String pText){
-        return (!NAME_USE_IChat||clazz_IChatCompound==null)?pText:ClassUtil.newInstance(clazz_ChatCompoundText,String.class,pText);
+        return (!NAME_USE_IChat||clazz_IChatComponent==null)?pText:ClassUtil.newInstance(clazz_ChatComponentText,String.class,pText);
     }
 
     protected LocalLanguage(T pPlugin){
